@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getAuthOrigin, getPasswordResetRedirectTo } from "@/lib/auth/origin";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -104,4 +105,81 @@ export async function logout() {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/login");
+}
+
+export async function requestPasswordReset(
+  _prev: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  if (!getSupabaseEnv()) {
+    return missingConfigState();
+  }
+
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { error: "Email is required." };
+  }
+
+  const origin = await getAuthOrigin();
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: getPasswordResetRedirectTo(origin),
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {
+    success:
+      "If an account exists for that email, we sent a password reset link.",
+  };
+}
+
+export async function updatePassword(
+  _prev: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  if (!getSupabaseEnv()) {
+    return missingConfigState();
+  }
+
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!password || !confirmPassword) {
+    return { error: "Both password fields are required." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const { data, error: userError } = await supabase.auth.getUser();
+
+  if (userError) {
+    return { error: userError.message };
+  }
+
+  if (!data.user) {
+    return {
+      error: "This reset link is invalid or has expired. Request a new one.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  await supabase.auth.signOut();
+  revalidatePath("/", "layout");
+  redirect("/login?reset=success");
 }

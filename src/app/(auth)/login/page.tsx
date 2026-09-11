@@ -7,13 +7,19 @@ export const metadata: Metadata = {
   title: "Login",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string }>;
+}) {
+  const params = await searchParams;
+
   return (
     <AuthCard
       title="Welcome back"
       description="Log in to manage your clients, projects, and invoices."
     >
-      <LoginForm />
+      <LoginForm resetSuccess={params.reset === "success"} />
     </AuthCard>
   );
 }

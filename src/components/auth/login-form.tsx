@@ -11,11 +11,19 @@ import { Label } from "@/components/ui/label";
 
 const initialState: AuthActionState = {};
 
-export function LoginForm() {
+export function LoginForm({ resetSuccess = false }: { resetSuccess?: boolean }) {
   const [state, formAction, pending] = useActionState(login, initialState);
 
   return (
     <form action={formAction} className="grid gap-4">
+      {resetSuccess && !state.error ? (
+        <p
+          role="status"
+          className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground"
+        >
+          Your password was updated. Log in with your new password.
+        </p>
+      ) : null}
       {state.error ? (
         <p
           role="alert"
@@ -43,6 +51,12 @@ export function LoginForm() {
           autoComplete="current-password"
           required
         />
+        <Link
+          href="/forgot-password"
+          className="w-fit text-sm font-medium text-foreground underline-offset-4 hover:underline"
+        >
+          Forgot password?
+        </Link>
       </div>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? <Loader2 data-icon="inline-start" className="animate-spin" /> : null}

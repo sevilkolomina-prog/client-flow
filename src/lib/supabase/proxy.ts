@@ -18,7 +18,11 @@ function isProtectedPath(pathname: string) {
 }
 
 function isAuthPath(pathname: string) {
-  return pathname === "/login" || pathname === "/signup";
+  return (
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password"
+  );
 }
 
 export async function updateSession(request: NextRequest) {
