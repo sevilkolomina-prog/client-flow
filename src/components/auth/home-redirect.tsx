@@ -9,9 +9,12 @@ export function HomeRedirect() {
 
   useEffect(() => {
     const hash = window.location.hash;
+    const params = new URLSearchParams(window.location.search);
 
-    if (hash.includes("type=recovery")) {
-      window.location.replace(`/reset-password${hash}`);
+    if (hash.includes("type=recovery") || params.get("type") === "recovery") {
+      window.location.replace(
+        `/reset-password${window.location.search}${hash}`
+      );
       return;
     }
 

@@ -30,6 +30,10 @@ function isAuthPath(pathname: string) {
   );
 }
 
+function isRecoveryPath(pathname: string) {
+  return pathname === "/reset-password" || pathname === "/auth/recovery";
+}
+
 function redirectWithCookies(
   request: NextRequest,
   pathname: string,
@@ -76,11 +80,16 @@ export async function updateSession(request: NextRequest) {
 
   const code = request.nextUrl.searchParams.get("code");
   const tokenHash = request.nextUrl.searchParams.get("token_hash");
+  const recoveryPath = isRecoveryPath(pathname);
 
-  if ((code || tokenHash) && pathname !== "/auth/callback") {
+  if (
+    (code || tokenHash) &&
+    pathname !== "/auth/callback" &&
+    pathname !== "/auth/recovery"
+  ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/auth/callback";
-    if (isRecovery) {
+    url.pathname = recoveryPath || isRecovery ? "/auth/recovery" : "/auth/callback";
+    if (recoveryPath || isRecovery) {
       url.searchParams.set("next", "/reset-password");
     } else if (!url.searchParams.get("next")) {
       url.searchParams.set("next", "/dashboard");
@@ -115,13 +124,19 @@ export async function updateSession(request: NextRequest) {
   const user = data?.claims;
   const recovering =
     isRecovery ||
+    recoveryPath ||
     request.cookies.get(PASSWORD_RECOVERY_COOKIE)?.value === "1";
+
+  if (user && pathname === "/reset-password") {
+    return supabaseResponse;
+  }
 
   if (
     user &&
     recovering &&
     pathname !== "/reset-password" &&
-    pathname !== "/auth/callback"
+    pathname !== "/auth/callback" &&
+    pathname !== "/auth/recovery"
   ) {
     return redirectWithCookies(request, "/reset-password", supabaseResponse);
   }
