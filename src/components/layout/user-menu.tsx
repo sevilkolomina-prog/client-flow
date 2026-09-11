@@ -1,0 +1,104 @@
+"use client";
+
+import { useEffect, useState, useTransition } from "react";
+import { LogOut } from "lucide-react";
+
+import { logout } from "@/lib/auth/actions";
+import { getSupabaseEnv } from "@/lib/supabase/env";
+import { createClient } from "@/lib/supabase/client";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+function getInitials(value: string) {
+  const parts = value.split(" ").filter(Boolean);
+
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  return value.slice(0, 2).toUpperCase() || "CF";
+}
+
+export function UserMenu() {
+  const [pending, startTransition] = useTransition();
+  const [label, setLabel] = useState("ClientFlow");
+  const [detail, setDetail] = useState<string | null>(null);
+  const [initials, setInitials] = useState("CF");
+
+  useEffect(() => {
+    if (!getSupabaseEnv()) {
+      return;
+    }
+
+    const supabase = createClient();
+
+    void supabase.auth.getUser().then(({ data }) => {
+      const user = data.user;
+      if (!user) {
+        return;
+      }
+
+      const fullName =
+        typeof user.user_metadata?.full_name === "string"
+          ? user.user_metadata.full_name
+          : "";
+      const email = user.email ?? "";
+      const displayName = fullName || email || "Account";
+
+      setLabel(displayName);
+      setDetail(fullName && email ? email : null);
+      setInitials(getInitials(displayName));
+    });
+  }, []);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="rounded-full"
+            aria-label="Open user menu"
+          />
+        }
+      >
+        <Avatar size="sm">
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-52">
+        <DropdownMenuLabel>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate font-medium text-foreground">{label}</span>
+            {detail ? (
+              <span className="truncate text-xs text-muted-foreground">
+                {detail}
+              </span>
+            ) : null}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={pending}
+          onClick={() => {
+            startTransition(() => {
+              void logout();
+            });
+          }}
+        >
+          <LogOut />
+          {pending ? "Logging out..." : "Log out"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
