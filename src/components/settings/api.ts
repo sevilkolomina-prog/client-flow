@@ -8,7 +8,8 @@ import {
   type ProfileRow,
 } from "@/components/settings/data";
 
-const profileSelect = "id, full_name, company_name, phone, created_at, updated_at";
+const profileSelect =
+  "id, full_name, company_name, phone, plan, subscription_status, created_at, updated_at";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {

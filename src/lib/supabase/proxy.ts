@@ -19,6 +19,7 @@ const protectedPaths = [
   "/clients",
   "/projects",
   "/invoices",
+  "/pricing",
   "/settings",
   "/onboarding",
 ];
@@ -28,6 +29,7 @@ const appPaths = [
   "/clients",
   "/projects",
   "/invoices",
+  "/pricing",
   "/settings",
 ];
 

@@ -1,4 +1,5 @@
 import {
+  CreditCard,
   FileText,
   FolderKanban,
   LayoutDashboard,
@@ -9,7 +10,13 @@ import {
 
 export type NavItem = {
   title: string;
-  href: "/dashboard" | "/clients" | "/projects" | "/invoices" | "/settings";
+  href:
+    | "/dashboard"
+    | "/clients"
+    | "/projects"
+    | "/invoices"
+    | "/pricing"
+    | "/settings";
   icon: LucideIcon;
 };
 
@@ -18,6 +25,7 @@ export const navItems: NavItem[] = [
   { title: "Clients", href: "/clients", icon: Users },
   { title: "Projects", href: "/projects", icon: FolderKanban },
   { title: "Invoices", href: "/invoices", icon: FileText },
+  { title: "Pricing", href: "/pricing", icon: CreditCard },
   { title: "Settings", href: "/settings", icon: Settings },
 ];
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition, type FormEvent } from "react";
+import Link from "next/link";
 import { Loader2, LogOut } from "lucide-react";
 
 import { getInitials } from "@/components/clients/data";
@@ -10,6 +11,7 @@ import {
 } from "@/components/settings/api";
 import type { Profile } from "@/components/settings/data";
 import { logout } from "@/lib/auth/actions";
+import { planLabel, subscriptionStatusLabel } from "@/lib/billing/plans";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +30,8 @@ const emptyProfile: Profile = {
   email: "",
   companyName: "",
   phone: "",
+  plan: "free",
+  subscriptionStatus: null,
 };
 
 export function SettingsView() {
@@ -251,6 +255,40 @@ export function SettingsView() {
               </div>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl bg-card shadow-xs">
+        <CardHeader>
+          <CardTitle>Subscription</CardTitle>
+          <CardDescription>
+            Your current ClientFlow plan.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="grid gap-3">
+            <div>
+              <p className="text-sm text-muted-foreground">Current Plan</p>
+              <p className="text-sm font-medium">
+                {loading ? "Loading..." : planLabel(profile.plan)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Subscription Status</p>
+              <p className="text-sm font-medium">
+                {loading
+                  ? "Loading..."
+                  : subscriptionStatusLabel(profile.subscriptionStatus)}
+              </p>
+            </div>
+          </div>
+          <Button
+            className="w-full sm:w-auto"
+            nativeButton={false}
+            render={<Link href="/pricing" />}
+          >
+            Upgrade Plan
+          </Button>
         </CardContent>
       </Card>
 
