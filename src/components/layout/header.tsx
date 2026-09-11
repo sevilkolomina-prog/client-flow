@@ -50,7 +50,7 @@ export function Header() {
 
       <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
 
-      <div className="ml-auto">
+      <div className="relative z-30 ml-auto">
         <UserMenu />
       </div>
     </header>

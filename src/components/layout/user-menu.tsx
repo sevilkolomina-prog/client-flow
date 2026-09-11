@@ -7,7 +7,6 @@ import { logout } from "@/lib/auth/actions";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +28,7 @@ function getInitials(value: string) {
 
 export function UserMenu() {
   const [pending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("ClientFlow");
   const [detail, setDetail] = useState<string | null>(null);
   const [initials, setInitials] = useState("CF");
@@ -59,23 +59,24 @@ export function UserMenu() {
     });
   }, []);
 
+  function handleLogout() {
+    setOpen(false);
+    startTransition(() => {
+      void logout();
+    });
+  }
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="rounded-full"
-            aria-label="Open user menu"
-          />
-        }
+        aria-label="Open user menu"
+        className="relative z-30 inline-flex size-7 items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <Avatar size="sm">
+        <Avatar size="sm" className="pointer-events-none">
           <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-52">
+      <DropdownMenuContent align="end" sideOffset={8} className="z-[100] min-w-52">
         <DropdownMenuLabel>
           <div className="flex min-w-0 flex-col">
             <span className="truncate font-medium text-foreground">{label}</span>
@@ -87,14 +88,7 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          disabled={pending}
-          onClick={() => {
-            startTransition(() => {
-              void logout();
-            });
-          }}
-        >
+        <DropdownMenuItem disabled={pending} onClick={handleLogout}>
           <LogOut />
           {pending ? "Logging out..." : "Log out"}
         </DropdownMenuItem>
