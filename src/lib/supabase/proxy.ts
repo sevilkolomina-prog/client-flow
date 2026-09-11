@@ -6,9 +6,24 @@ import {
   activeRecoveryCookieOptions,
   isPasswordRecoveryRequest,
 } from "@/lib/auth/recovery-cookie";
+import {
+  DASHBOARD_PATH,
+  ONBOARDING_PATH,
+  asProfilesClient,
+  getSignedInHomePath,
+} from "@/lib/onboarding/home-path";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 const protectedPaths = [
+  "/dashboard",
+  "/clients",
+  "/projects",
+  "/invoices",
+  "/settings",
+  "/onboarding",
+];
+
+const appPaths = [
   "/dashboard",
   "/clients",
   "/projects",
@@ -20,6 +35,16 @@ function isProtectedPath(pathname: string) {
   return protectedPaths.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
+}
+
+function isAppPath(pathname: string) {
+  return appPaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
+function claimsUserId(claims: { sub?: unknown } | null | undefined) {
+  return typeof claims?.sub === "string" ? claims.sub : null;
 }
 
 function isAuthPath(pathname: string) {
@@ -145,12 +170,29 @@ export async function updateSession(request: NextRequest) {
     return redirectWithCookies(request, "/login", supabaseResponse);
   }
 
+  const homePath = user
+    ? await getSignedInHomePath(asProfilesClient(supabase), claimsUserId(user))
+    : DASHBOARD_PATH;
+
   if (user && isAuthPath(pathname)) {
     return redirectWithCookies(
       request,
-      recovering ? "/reset-password" : "/dashboard",
+      recovering ? "/reset-password" : homePath,
       supabaseResponse
     );
+  }
+
+  if (user && !recovering && isAppPath(pathname) && homePath === ONBOARDING_PATH) {
+    return redirectWithCookies(request, ONBOARDING_PATH, supabaseResponse);
+  }
+
+  if (
+    user &&
+    !recovering &&
+    (pathname === ONBOARDING_PATH || pathname.startsWith(`${ONBOARDING_PATH}/`)) &&
+    homePath === DASHBOARD_PATH
+  ) {
+    return redirectWithCookies(request, DASHBOARD_PATH, supabaseResponse);
   }
 
   return supabaseResponse;

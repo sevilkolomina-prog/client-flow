@@ -11,6 +11,7 @@ import {
   expireCookieOptions,
   pendingResetCookieOptions,
 } from "@/lib/auth/recovery-cookie";
+import { asProfilesClient, getSignedInHomePath } from "@/lib/onboarding/home-path";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -48,8 +49,10 @@ export async function login(
     return { error: error.message };
   }
 
+  const { data } = await supabase.auth.getUser();
+
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(await getSignedInHomePath(asProfilesClient(supabase), data.user?.id));
 }
 
 export async function signup(
@@ -100,7 +103,7 @@ export async function signup(
   }
 
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect(await getSignedInHomePath(asProfilesClient(supabase), data.user?.id));
 }
 
 export async function logout() {

@@ -9,6 +9,7 @@ import {
   expireCookieOptions,
   isPasswordRecoveryRequest,
 } from "@/lib/auth/recovery-cookie";
+import { asProfilesClient, getSignedInHomePath } from "@/lib/onboarding/home-path";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
@@ -61,7 +62,6 @@ export async function completeAuthRedirect(
       searchParams,
       cookies: cookieStore,
     });
-  const next = isRecovery ? "/reset-password" : "/dashboard";
   const base = redirectBase(request, origin);
   const errorRedirect = isRecovery
     ? `${base}/forgot-password?error=invalid`
@@ -76,6 +76,15 @@ export async function completeAuthRedirect(
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type");
 
+  async function signedInNextPath() {
+    if (isRecovery) {
+      return "/reset-password";
+    }
+
+    const { data } = await supabase.auth.getUser();
+    return getSignedInHomePath(asProfilesClient(supabase), data.user?.id);
+  }
+
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -83,7 +92,7 @@ export async function completeAuthRedirect(
       return NextResponse.redirect(errorRedirect);
     }
 
-    const response = NextResponse.redirect(`${base}${next}`);
+    const response = NextResponse.redirect(`${base}${await signedInNextPath()}`);
     applyRecoveryCookies(response, isRecovery);
     return response;
   }
@@ -104,7 +113,7 @@ export async function completeAuthRedirect(
       return NextResponse.redirect(errorRedirect);
     }
 
-    const response = NextResponse.redirect(`${base}${next}`);
+    const response = NextResponse.redirect(`${base}${await signedInNextPath()}`);
     applyRecoveryCookies(response, isRecovery);
     return response;
   }
