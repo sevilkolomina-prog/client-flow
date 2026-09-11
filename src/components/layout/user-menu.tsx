@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 
 import { logout } from "@/lib/auth/actions";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,9 +28,7 @@ function getInitials(value: string) {
 }
 
 export function UserMenu() {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [directPending, setDirectPending] = useState(false);
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("ClientFlow");
   const [detail, setDetail] = useState<string | null>(null);
@@ -71,69 +67,36 @@ export function UserMenu() {
     });
   }
 
-  async function handleDirectLogout() {
-    if (directPending) {
-      return;
-    }
-
-    setDirectPending(true);
-
-    try {
-      if (getSupabaseEnv()) {
-        const supabase = createClient();
-        await supabase.auth.signOut();
-      }
-    } finally {
-      router.replace("/login");
-      router.refresh();
-    }
-  }
-
   return (
-    <div className="flex items-center gap-2">
-      <Button
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger
         type="button"
-        variant="outline"
-        size="sm"
-        disabled={directPending}
-        onClick={() => {
-          void handleDirectLogout();
-        }}
+        aria-label="Open user menu"
+        className="relative z-30 inline-flex size-7 cursor-pointer items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <LogOut data-icon="inline-start" />
-        {directPending ? "Logging out..." : "Log out"}
-      </Button>
-
-      <DropdownMenu open={open} onOpenChange={setOpen}>
-        <DropdownMenuTrigger
-          type="button"
-          aria-label="Open user menu"
-          className="relative z-30 inline-flex size-7 cursor-pointer items-center justify-center rounded-full outline-none hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <Avatar size="sm" className="pointer-events-none">
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" sideOffset={8} className="z-[100] min-w-52">
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>
-              <div className="flex min-w-0 flex-col">
-                <span className="truncate font-medium text-foreground">{label}</span>
-                {detail ? (
-                  <span className="truncate text-xs text-muted-foreground">
-                    {detail}
-                  </span>
-                ) : null}
-              </div>
-            </DropdownMenuLabel>
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={pending} onClick={handleLogout}>
-            <LogOut />
-            {pending ? "Logging out..." : "Log out"}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+        <Avatar size="sm" className="pointer-events-none">
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={8} className="z-[100] min-w-52">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate font-medium text-foreground">{label}</span>
+              {detail ? (
+                <span className="truncate text-xs text-muted-foreground">
+                  {detail}
+                </span>
+              ) : null}
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem disabled={pending} onClick={handleLogout}>
+          <LogOut />
+          {pending ? "Logging out..." : "Log out"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
