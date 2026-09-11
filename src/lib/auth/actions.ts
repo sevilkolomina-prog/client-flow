@@ -1,9 +1,16 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getAuthOrigin, getPasswordResetRedirectTo } from "@/lib/auth/origin";
+import {
+  PASSWORD_RECOVERY_COOKIE,
+  PASSWORD_RESET_PENDING_COOKIE,
+  expireCookieOptions,
+  pendingResetCookieOptions,
+} from "@/lib/auth/recovery-cookie";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
@@ -123,6 +130,12 @@ export async function requestPasswordReset(
 
   const origin = await getAuthOrigin();
   const supabase = await createClient();
+  const cookieStore = await cookies();
+  cookieStore.set(
+    PASSWORD_RESET_PENDING_COOKIE,
+    "1",
+    pendingResetCookieOptions()
+  );
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: getPasswordResetRedirectTo(origin),
   });
@@ -178,6 +191,10 @@ export async function updatePassword(
   if (error) {
     return { error: error.message };
   }
+
+  const cookieStore = await cookies();
+  cookieStore.set(PASSWORD_RECOVERY_COOKIE, "", expireCookieOptions());
+  cookieStore.set(PASSWORD_RESET_PENDING_COOKIE, "", expireCookieOptions());
 
   await supabase.auth.signOut();
   revalidatePath("/", "layout");

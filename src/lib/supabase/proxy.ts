@@ -1,6 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  PASSWORD_RECOVERY_COOKIE,
+  activeRecoveryCookieOptions,
+  isPasswordRecoveryRequest,
+} from "@/lib/auth/recovery-cookie";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
 const protectedPaths = [
@@ -25,9 +30,38 @@ function isAuthPath(pathname: string) {
   );
 }
 
+function redirectWithCookies(
+  request: NextRequest,
+  pathname: string,
+  source: NextResponse
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = "";
+  const response = NextResponse.redirect(url);
+
+  source.cookies.getAll().forEach((cookie) => {
+    response.cookies.set(cookie);
+  });
+
+  if (request.cookies.get(PASSWORD_RECOVERY_COOKIE)?.value === "1") {
+    response.cookies.set(
+      PASSWORD_RECOVERY_COOKIE,
+      "1",
+      activeRecoveryCookieOptions()
+    );
+  }
+
+  return response;
+}
+
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const env = getSupabaseEnv();
+  const isRecovery = isPasswordRecoveryRequest({
+    searchParams: request.nextUrl.searchParams,
+    cookies: request.cookies,
+  });
 
   if (!env) {
     if (isProtectedPath(pathname)) {
@@ -38,6 +72,20 @@ export async function updateSession(request: NextRequest) {
     }
 
     return NextResponse.next({ request });
+  }
+
+  const code = request.nextUrl.searchParams.get("code");
+  const tokenHash = request.nextUrl.searchParams.get("token_hash");
+
+  if ((code || tokenHash) && pathname !== "/auth/callback") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    if (isRecovery) {
+      url.searchParams.set("next", "/reset-password");
+    } else if (!url.searchParams.get("next")) {
+      url.searchParams.set("next", "/dashboard");
+    }
+    return NextResponse.redirect(url);
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -65,19 +113,29 @@ export async function updateSession(request: NextRequest) {
   // Do not run code between createServerClient and getClaims().
   const { data } = await supabase.auth.getClaims();
   const user = data?.claims;
+  const recovering =
+    isRecovery ||
+    request.cookies.get(PASSWORD_RECOVERY_COOKIE)?.value === "1";
+
+  if (
+    user &&
+    recovering &&
+    pathname !== "/reset-password" &&
+    pathname !== "/auth/callback"
+  ) {
+    return redirectWithCookies(request, "/reset-password", supabaseResponse);
+  }
 
   if (!user && isProtectedPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = "";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(request, "/login", supabaseResponse);
   }
 
   if (user && isAuthPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    url.search = "";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(
+      request,
+      recovering ? "/reset-password" : "/dashboard",
+      supabaseResponse
+    );
   }
 
   return supabaseResponse;

@@ -38,5 +38,5 @@ export async function getAuthOrigin() {
 }
 
 export function getPasswordResetRedirectTo(origin: string) {
-  return `${origin}/auth/callback`;
+  return `${origin}/auth/callback?next=/reset-password`;
 }

@@ -1,15 +1,27 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 import { PRODUCTION_SITE_URL } from "@/lib/auth/origin";
+import {
+  PASSWORD_RECOVERY_COOKIE,
+  PASSWORD_RESET_PENDING_COOKIE,
+  activeRecoveryCookieOptions,
+  expireCookieOptions,
+  isPasswordRecoveryRequest,
+} from "@/lib/auth/recovery-cookie";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 
-function safeNextPath(value: string | null) {
+function safeNextPath(value: string | null, isRecovery: boolean) {
+  if (isRecovery) {
+    return "/reset-password";
+  }
+
   if (value && value.startsWith("/") && !value.startsWith("//")) {
     return value;
   }
 
-  return "/reset-password";
+  return "/dashboard";
 }
 
 function redirectBase(request: Request, origin: string) {
@@ -31,9 +43,32 @@ function redirectBase(request: Request, origin: string) {
   return origin;
 }
 
+function applyRecoveryCookies(response: NextResponse, isRecovery: boolean) {
+  if (isRecovery) {
+    response.cookies.set(
+      PASSWORD_RECOVERY_COOKIE,
+      "1",
+      activeRecoveryCookieOptions()
+    );
+    return;
+  }
+
+  response.cookies.set(PASSWORD_RECOVERY_COOKIE, "", expireCookieOptions());
+  response.cookies.set(
+    PASSWORD_RESET_PENDING_COOKIE,
+    "",
+    expireCookieOptions()
+  );
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  const next = safeNextPath(searchParams.get("next"));
+  const cookieStore = await cookies();
+  const isRecovery = isPasswordRecoveryRequest({
+    searchParams,
+    cookies: cookieStore,
+  });
+  const next = safeNextPath(searchParams.get("next"), isRecovery);
   const base = redirectBase(request, origin);
   const errorRedirect = `${base}/forgot-password?error=invalid`;
 
@@ -53,7 +88,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(errorRedirect);
     }
 
-    return NextResponse.redirect(`${base}${next}`);
+    const response = NextResponse.redirect(`${base}${next}`);
+    applyRecoveryCookies(response, isRecovery);
+    return response;
   }
 
   if (tokenHash && type) {
@@ -72,7 +109,9 @@ export async function GET(request: Request) {
       return NextResponse.redirect(errorRedirect);
     }
 
-    return NextResponse.redirect(`${base}${next}`);
+    const response = NextResponse.redirect(`${base}${next}`);
+    applyRecoveryCookies(response, isRecovery);
+    return response;
   }
 
   return NextResponse.redirect(errorRedirect);

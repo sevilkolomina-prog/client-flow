@@ -38,7 +38,15 @@ export function ResetPasswordForm() {
     }
 
     const supabase = createClient();
-    const code = new URLSearchParams(window.location.search).get("code");
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash;
+    const code = params.get("code");
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" && !cancelled) {
+        setSessionState("ready");
+      }
+    });
 
     const prepare = code
       ? supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
@@ -53,8 +61,17 @@ export function ResetPasswordForm() {
 
     prepare
       .then(({ data }) => {
-        if (!cancelled) {
-          setSessionState(data.user ? "ready" : "missing");
+        if (cancelled) {
+          return;
+        }
+
+        if (data.user) {
+          setSessionState("ready");
+          return;
+        }
+
+        if (!hash.includes("type=recovery")) {
+          setSessionState("missing");
         }
       })
       .catch(() => {
@@ -63,8 +80,18 @@ export function ResetPasswordForm() {
         }
       });
 
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) {
+        setSessionState((current) =>
+          current === "loading" ? "missing" : current
+        );
+      }
+    }, 4000);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      listener.subscription.unsubscribe();
     };
   }, []);
 
@@ -120,7 +147,7 @@ export function ResetPasswordForm() {
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Label htmlFor="confirmPassword">Confirm New Password</Label>
         <Input
           id="confirmPassword"
           name="confirmPassword"
