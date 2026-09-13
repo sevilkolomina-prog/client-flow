@@ -111,3 +111,84 @@ export async function createCheckoutSession(
 
   redirect(checkoutUrl);
 }
+
+export type PortalActionState = {
+  error?: string;
+};
+
+export async function createBillingPortalSession(): Promise<PortalActionState> {
+  if (!getSupabaseEnv()) {
+    return {
+      error:
+        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    };
+  }
+
+  const stripeResult = createStripeClient();
+
+  if (!stripeResult.ok) {
+    return { error: stripeResult.error };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!data.user) {
+    redirect("/login");
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("plan, stripe_customer_id")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    return { error: profileError.message };
+  }
+
+  if (!isPaidPlan(profile?.plan)) {
+    return {
+      error: "Upgrade to Pro or Business to manage a subscription.",
+    };
+  }
+
+  const stripeCustomerId =
+    typeof profile?.stripe_customer_id === "string" &&
+    profile.stripe_customer_id.startsWith("cus_")
+      ? profile.stripe_customer_id
+      : null;
+
+  if (!stripeCustomerId) {
+    return { error: "No Stripe customer is linked to this account." };
+  }
+
+  const origin = await getAuthOrigin();
+  let portalUrl: string;
+
+  try {
+    const session = await stripeResult.stripe.billingPortal.sessions.create({
+      customer: stripeCustomerId,
+      return_url: `${origin}/settings`,
+    });
+
+    if (!session.url) {
+      return { error: "Stripe did not return a billing portal URL." };
+    }
+
+    portalUrl = session.url;
+  } catch (caught) {
+    const message =
+      caught instanceof Error && caught.message
+        ? caught.message
+        : "Unable to open the Stripe billing portal.";
+
+    return { error: message };
+  }
+
+  redirect(portalUrl);
+}

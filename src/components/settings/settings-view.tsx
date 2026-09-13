@@ -11,7 +11,12 @@ import {
 } from "@/components/settings/api";
 import type { Profile } from "@/components/settings/data";
 import { logout } from "@/lib/auth/actions";
-import { planLabel, subscriptionStatusLabel } from "@/lib/billing/plans";
+import { createBillingPortalSession } from "@/lib/billing/actions";
+import {
+  isPaidPlan,
+  planLabel,
+  subscriptionStatusLabel,
+} from "@/lib/billing/plans";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,6 +49,8 @@ export function SettingsView() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [logoutPending, startLogout] = useTransition();
+  const [portalPending, startPortal] = useTransition();
+  const [portalError, setPortalError] = useState<string | null>(null);
 
   function applyProfile(nextProfile: Profile) {
     setProfile(nextProfile);
@@ -125,6 +132,22 @@ export function SettingsView() {
   }
 
   const avatarLabel = fullName.trim() || profile.email || "Account";
+  const paidPlan = isPaidPlan(profile.plan);
+
+  function handleManageSubscription() {
+    if (portalPending || loading || !paidPlan) {
+      return;
+    }
+
+    setPortalError(null);
+    startPortal(async () => {
+      const result = await createBillingPortalSession();
+
+      if (result?.error) {
+        setPortalError(result.error);
+      }
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -265,30 +288,55 @@ export function SettingsView() {
             Your current ClientFlow plan.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="grid gap-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Current Plan</p>
-              <p className="text-sm font-medium">
-                {loading ? "Loading..." : planLabel(profile.plan)}
-              </p>
+        <CardContent className="grid gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="grid gap-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Current Plan</p>
+                <p className="text-sm font-medium">
+                  {loading ? "Loading..." : planLabel(profile.plan)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Subscription Status</p>
+                <p className="text-sm font-medium">
+                  {loading
+                    ? "Loading..."
+                    : subscriptionStatusLabel(profile.subscriptionStatus)}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Subscription Status</p>
-              <p className="text-sm font-medium">
-                {loading
-                  ? "Loading..."
-                  : subscriptionStatusLabel(profile.subscriptionStatus)}
-              </p>
-            </div>
+            {paidPlan ? (
+              <Button
+                type="button"
+                className="w-full sm:w-auto"
+                disabled={loading || portalPending}
+                onClick={handleManageSubscription}
+              >
+                {portalPending ? (
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                ) : null}
+                {portalPending
+                  ? "Opening portal..."
+                  : profile.plan === "business"
+                    ? "Manage / Downgrade"
+                    : "Manage / Upgrade"}
+              </Button>
+            ) : (
+              <Button
+                className="w-full sm:w-auto"
+                nativeButton={false}
+                render={<Link href="/pricing" />}
+              >
+                Upgrade Plan
+              </Button>
+            )}
           </div>
-          <Button
-            className="w-full sm:w-auto"
-            nativeButton={false}
-            render={<Link href="/pricing" />}
-          >
-            Upgrade Plan
-          </Button>
+          {portalError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {portalError}
+            </p>
+          ) : null}
         </CardContent>
       </Card>
 
