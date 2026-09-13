@@ -5,6 +5,7 @@ import {
   createStripeClient,
   getStripeWebhookSecret,
 } from "@/lib/billing/stripe";
+import { logServerError } from "@/lib/errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
 
   try {
     await handleStripeEvent(event, stripeResult.stripe);
-  } catch {
+  } catch (caught) {
+    logServerError("stripe-webhook", caught);
     return NextResponse.json(
       { error: "Unable to process Stripe webhook." },
       { status: 500 }

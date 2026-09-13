@@ -2,15 +2,23 @@
 
 import { redirect } from "next/navigation";
 
-import { isPaidPlan } from "@/lib/billing/plans";
+import { isPaidPlan, parsePlan } from "@/lib/billing/plans";
 import { assertCheckoutPrice, createStripeClient } from "@/lib/billing/stripe";
 import { getAuthOrigin } from "@/lib/auth/origin";
+import {
+  APP_CONFIG_ERROR,
+  BILLING_UNAVAILABLE_ERROR,
+  logServerError,
+  toUserFacingError,
+} from "@/lib/errors";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 export type CheckoutActionState = {
   error?: string;
 };
+
+const PAID_CHECKOUT_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 export async function createCheckoutSession(
   plan: string
@@ -20,16 +28,14 @@ export async function createCheckoutSession(
   }
 
   if (!getSupabaseEnv()) {
-    return {
-      error:
-        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    };
+    return { error: APP_CONFIG_ERROR };
   }
 
   const stripeResult = createStripeClient();
 
   if (!stripeResult.ok) {
-    return { error: stripeResult.error };
+    logServerError("billing-checkout", stripeResult.error);
+    return { error: BILLING_UNAVAILABLE_ERROR };
   }
 
   const stripe = stripeResult.stripe;
@@ -37,14 +43,15 @@ export async function createCheckoutSession(
   const priceCheck = await assertCheckoutPrice(stripe, plan, priceId);
 
   if (priceCheck.error) {
-    return { error: priceCheck.error };
+    logServerError("billing-checkout-price", priceCheck.error);
+    return { error: BILLING_UNAVAILABLE_ERROR };
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    return { error: error.message };
+    return { error: toUserFacingError(error, "You must be logged in.") };
   }
 
   if (!data.user) {
@@ -54,9 +61,25 @@ export async function createCheckoutSession(
   const email = data.user.email?.trim() ?? "";
   const { data: profile } = await supabase
     .from("profiles")
-    .select("stripe_customer_id")
+    .select("plan, stripe_customer_id, subscription_status")
     .eq("id", data.user.id)
     .maybeSingle();
+
+  const currentPlan = parsePlan(profile?.plan);
+  const subscriptionStatus =
+    typeof profile?.subscription_status === "string"
+      ? profile.subscription_status.toLowerCase()
+      : "";
+
+  if (
+    isPaidPlan(currentPlan) ||
+    PAID_CHECKOUT_STATUSES.has(subscriptionStatus)
+  ) {
+    return {
+      error:
+        "You already have a subscription. Use Manage billing in Settings to change plans.",
+    };
+  }
 
   const stripeCustomerId =
     typeof profile?.stripe_customer_id === "string" &&
@@ -96,17 +119,15 @@ export async function createCheckoutSession(
     });
 
     if (!session.url) {
-      return { error: "Stripe did not return a checkout URL." };
+      return { error: "Unable to start checkout. Please try again." };
     }
 
     checkoutUrl = session.url;
   } catch (caught) {
-    const message =
-      caught instanceof Error && caught.message
-        ? caught.message
-        : "Unable to start Stripe checkout.";
-
-    return { error: message };
+    logServerError("billing-checkout", caught);
+    return {
+      error: toUserFacingError(caught, "Unable to start checkout. Please try again."),
+    };
   }
 
   redirect(checkoutUrl);
@@ -118,23 +139,21 @@ export type PortalActionState = {
 
 export async function createBillingPortalSession(): Promise<PortalActionState> {
   if (!getSupabaseEnv()) {
-    return {
-      error:
-        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
-    };
+    return { error: APP_CONFIG_ERROR };
   }
 
   const stripeResult = createStripeClient();
 
   if (!stripeResult.ok) {
-    return { error: stripeResult.error };
+    logServerError("billing-portal", stripeResult.error);
+    return { error: BILLING_UNAVAILABLE_ERROR };
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    return { error: error.message };
+    return { error: toUserFacingError(error, "You must be logged in.") };
   }
 
   if (!data.user) {
@@ -148,7 +167,9 @@ export async function createBillingPortalSession(): Promise<PortalActionState> {
     .maybeSingle();
 
   if (profileError) {
-    return { error: profileError.message };
+    return {
+      error: toUserFacingError(profileError, "Unable to load billing details."),
+    };
   }
 
   if (!isPaidPlan(profile?.plan)) {
@@ -164,7 +185,7 @@ export async function createBillingPortalSession(): Promise<PortalActionState> {
       : null;
 
   if (!stripeCustomerId) {
-    return { error: "No Stripe customer is linked to this account." };
+    return { error: "No billing customer is linked to this account yet." };
   }
 
   const origin = await getAuthOrigin();
@@ -177,17 +198,18 @@ export async function createBillingPortalSession(): Promise<PortalActionState> {
     });
 
     if (!session.url) {
-      return { error: "Stripe did not return a billing portal URL." };
+      return { error: "Unable to open billing management. Please try again." };
     }
 
     portalUrl = session.url;
   } catch (caught) {
-    const message =
-      caught instanceof Error && caught.message
-        ? caught.message
-        : "Unable to open the Stripe billing portal.";
-
-    return { error: message };
+    logServerError("billing-portal", caught);
+    return {
+      error: toUserFacingError(
+        caught,
+        "Unable to open billing management. Please try again."
+      ),
+    };
   }
 
   redirect(portalUrl);

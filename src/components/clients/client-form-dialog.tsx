@@ -90,7 +90,7 @@ export function ClientFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" showCloseButton>
+      <DialogContent className="max-h-[min(90dvh,40rem)] overflow-y-auto sm:max-w-md" showCloseButton>
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Client" : "Add Client"}</DialogTitle>
           <DialogDescription>

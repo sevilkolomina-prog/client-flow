@@ -9,6 +9,7 @@ import {
   type InvoiceRow,
   type InvoiceStatus,
 } from "@/components/invoices/data";
+import { toUserFacingError } from "@/lib/errors";
 
 const invoiceSelect = `
   id,
@@ -44,21 +45,7 @@ function getErrorMessage(error: unknown, fallback: string) {
     return "An invoice with that number already exists.";
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof error.message === "string" &&
-    error.message
-  ) {
-    return error.message;
-  }
-
-  return fallback;
+  return toUserFacingError(error, fallback);
 }
 
 async function requireUserId() {
@@ -66,7 +53,9 @@ async function requireUserId() {
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(
+      toUserFacingError(error, "You must be logged in to manage invoices.")
+    );
   }
 
   if (!data.user) {
@@ -103,7 +92,7 @@ async function fetchInvoiceNumbers() {
     .select("invoice_number");
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(toUserFacingError(error, "Unable to load invoices."));
   }
 
   return (data ?? []).map((row) => ({
@@ -119,7 +108,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(toUserFacingError(error, "Unable to load invoices."));
   }
 
   return (data as InvoiceRow[]).map(mapInvoiceRow);

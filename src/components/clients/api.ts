@@ -7,21 +7,16 @@ import {
   type ClientFormValues,
   type ClientRow,
 } from "@/components/clients/data";
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-}
+import { toUserFacingError } from "@/lib/errors";
 
 async function requireUserId() {
   const supabase = createClient();
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(
+      toUserFacingError(error, "You must be logged in to manage clients.")
+    );
   }
 
   if (!data.user) {
@@ -41,7 +36,7 @@ export async function fetchClients(): Promise<Client[]> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(toUserFacingError(error, "Unable to load clients."));
   }
 
   return (data as ClientRow[]).map(mapClientRow);
@@ -68,7 +63,7 @@ export async function updateClientRecord(
     .single();
 
   if (error) {
-    throw new Error(getErrorMessage(error, "Unable to update client."));
+    throw new Error(toUserFacingError(error, "Unable to update client."));
   }
 
   return mapClientRow(data as ClientRow);
@@ -79,6 +74,6 @@ export async function deleteClientRecord(id: string) {
   const { error } = await supabase.from("clients").delete().eq("id", id);
 
   if (error) {
-    throw new Error(getErrorMessage(error, "Unable to delete client."));
+    throw new Error(toUserFacingError(error, "Unable to delete client."));
   }
 }

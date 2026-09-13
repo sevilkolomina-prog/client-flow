@@ -25,6 +25,7 @@ import {
   type PlanId,
 } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
+import { toUserFacingError } from "@/lib/errors";
 
 type PricingViewProps = {
   checkout?: string | null;
@@ -87,11 +88,7 @@ export function PricingView({ checkout = null }: PricingViewProps) {
         }
       } catch (caught: unknown) {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : "Unable to load your current plan."
-          );
+          setError(toUserFacingError(caught, "Unable to load your current plan."));
           setLoading(false);
         }
       }
@@ -117,7 +114,7 @@ export function PricingView({ checkout = null }: PricingViewProps) {
         : await createCheckoutSession(planId);
 
       if (result?.error) {
-        setError(result.error);
+        setError(toUserFacingError(result.error, "Unable to start billing."));
         setPendingPlan(null);
       }
     });
@@ -208,6 +205,7 @@ export function PricingView({ checkout = null }: PricingViewProps) {
                   disabled={
                     loading || pending || isCurrent || plan.id === "free"
                   }
+                  aria-busy={isCheckoutPending || loading}
                   onClick={() => handleUpgrade(plan.id)}
                 >
                   {loading || isCheckoutPending ? (

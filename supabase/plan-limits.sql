@@ -1,5 +1,6 @@
 -- Free-plan create limits for ClientFlow clients and projects.
--- Run this in the Supabase SQL Editor after protect-profile-billing.sql.
+-- Run this in the Supabase SQL Editor after clients.sql, projects.sql,
+-- and subscriptions.sql. Recommended after protect-profile-billing.sql.
 -- Do not run this file automatically from the app.
 --
 -- Free users: max 3 clients and max 3 projects.

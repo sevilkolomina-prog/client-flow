@@ -12,6 +12,7 @@ import { RecentClients } from "@/components/dashboard/recent-clients";
 import { RecentInvoices } from "@/components/dashboard/recent-invoices";
 import { RecentProjects } from "@/components/dashboard/recent-projects";
 import { Button } from "@/components/ui/button";
+import { toUserFacingError } from "@/lib/errors";
 
 const emptyDashboard = getDashboardData([], [], []);
 
@@ -28,9 +29,7 @@ export function DashboardView() {
       const nextData = await fetchDashboardData();
       setData(nextData);
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to load dashboard."
-      );
+      setError(toUserFacingError(caught, "Unable to load dashboard."));
     } finally {
       setLoading(false);
     }
@@ -49,11 +48,7 @@ export function DashboardView() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : "Unable to load dashboard."
-          );
+          setError(toUserFacingError(caught, "Unable to load dashboard."));
           setLoading(false);
         }
       });

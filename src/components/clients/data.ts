@@ -44,57 +44,6 @@ export function mapClientRow(row: ClientRow): Client {
   };
 }
 
-export const initialClients: Client[] = [
-  {
-    id: "client-1",
-    name: "Jordan Hale",
-    company: "Acme Co",
-    email: "jordan.hale@acme.co",
-    phone: "(415) 555-0142",
-    status: "Active",
-  },
-  {
-    id: "client-2",
-    name: "Priya Shah",
-    company: "Northwind",
-    email: "priya.shah@northwind.io",
-    phone: "(206) 555-0198",
-    status: "Active",
-  },
-  {
-    id: "client-3",
-    name: "Marcus Chen",
-    company: "Globex",
-    email: "marcus.chen@globex.com",
-    phone: "(212) 555-0166",
-    status: "Lead",
-  },
-  {
-    id: "client-4",
-    name: "Elena Rossi",
-    company: "Initech",
-    email: "elena.rossi@initech.com",
-    phone: "(512) 555-0133",
-    status: "Active",
-  },
-  {
-    id: "client-5",
-    name: "Sam Okonkwo",
-    company: "Umbrella Labs",
-    email: "sam.okonkwo@umbrellalabs.com",
-    phone: "(617) 555-0177",
-    status: "Inactive",
-  },
-  {
-    id: "client-6",
-    name: "Avery Kim",
-    company: "Brightline Studio",
-    email: "avery.kim@brightline.co",
-    phone: "(503) 555-0119",
-    status: "Lead",
-  },
-];
-
 export function getInitials(name: string) {
   return name
     .split(" ")

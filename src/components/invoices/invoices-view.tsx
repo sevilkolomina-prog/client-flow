@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2, Plus, Search } from "lucide-react";
 
 import { fetchClients } from "@/components/clients/api";
@@ -45,6 +46,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toUserFacingError } from "@/lib/errors";
 
 export function InvoicesView() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -80,9 +82,7 @@ export function InvoicesView() {
       setClients(nextClients);
       setProjects(nextProjects);
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to load invoices."
-      );
+      setError(toUserFacingError(caught, "Unable to load invoices."));
     } finally {
       setLoading(false);
     }
@@ -103,11 +103,7 @@ export function InvoicesView() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : "Unable to load invoices."
-          );
+          setError(toUserFacingError(caught, "Unable to load invoices."));
           setLoading(false);
         }
       });
@@ -138,6 +134,10 @@ export function InvoicesView() {
   }
 
   async function handleSubmit(values: InvoiceFormValues) {
+    if (formPending) {
+      return;
+    }
+
     setFormPending(true);
     setFormError(null);
 
@@ -160,15 +160,17 @@ export function InvoicesView() {
 
       handleDialogOpenChange(false);
     } catch (caught) {
-      setFormError(
-        caught instanceof Error ? caught.message : "Unable to save invoice."
-      );
+      setFormError(toUserFacingError(caught, "Unable to save invoice."));
     } finally {
       setFormPending(false);
     }
   }
 
   async function handleMarkAsPaid(invoice: Invoice) {
+    if (payingId) {
+      return;
+    }
+
     setPayingId(invoice.id);
     setError(null);
 
@@ -178,17 +180,17 @@ export function InvoicesView() {
         current.map((item) => (item.id === updated.id ? updated : item))
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "Unable to mark invoice as paid."
-      );
+      setError(toUserFacingError(caught, "Unable to mark invoice as paid."));
     } finally {
       setPayingId(null);
     }
   }
 
   async function handleDelete(invoice: Invoice) {
+    if (deletingId) {
+      return;
+    }
+
     setDeletingId(invoice.id);
     setError(null);
 
@@ -198,9 +200,7 @@ export function InvoicesView() {
         current.filter((item) => item.id !== invoice.id)
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to delete invoice."
-      );
+      setError(toUserFacingError(caught, "Unable to delete invoice."));
     } finally {
       setDeletingId(null);
     }
@@ -210,7 +210,9 @@ export function InvoicesView() {
     invoices.length === 0
       ? clients.length === 0
         ? "No invoices yet. Add a client and project first."
-        : "No invoices yet. Create your first invoice to get started."
+        : projects.length === 0
+          ? "No invoices yet. Create a project first, then add an invoice."
+          : "No invoices yet. Create your first invoice to get started."
       : "No invoices match your search.";
 
   return (
@@ -225,7 +227,7 @@ export function InvoicesView() {
         <Button
           className="w-full sm:w-auto"
           onClick={openAddDialog}
-          disabled={clients.length === 0}
+          disabled={clients.length === 0 || projects.length === 0}
         >
           <Plus data-icon="inline-start" />
           New Invoice
@@ -292,8 +294,24 @@ export function InvoicesView() {
         </Card>
       ) : visibleInvoices.length === 0 ? (
         <Card className="bg-card shadow-xs">
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {emptyMessage}
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            {invoices.length === 0 ? (
+              clients.length === 0 ? (
+                <Button nativeButton={false} render={<Link href="/clients" />}>
+                  Add a client first
+                </Button>
+              ) : projects.length === 0 ? (
+                <Button nativeButton={false} render={<Link href="/projects" />}>
+                  Create a project first
+                </Button>
+              ) : (
+                <Button type="button" onClick={openAddDialog}>
+                  <Plus data-icon="inline-start" />
+                  New Invoice
+                </Button>
+              )
+            ) : null}
           </CardContent>
         </Card>
       ) : (

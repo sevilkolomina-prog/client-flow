@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { isBusinessType } from "@/components/onboarding/data";
+import { APP_CONFIG_ERROR, toUserFacingError } from "@/lib/errors";
 import { DASHBOARD_PATH } from "@/lib/onboarding/home-path";
 import { getSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
@@ -13,10 +14,7 @@ export type OnboardingActionState = {
 };
 
 function missingConfigState(): OnboardingActionState {
-  return {
-    error:
-      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.",
-  };
+  return { error: APP_CONFIG_ERROR };
 }
 
 export async function completeOnboarding(
@@ -44,7 +42,7 @@ export async function completeOnboarding(
   const { data, error: userError } = await supabase.auth.getUser();
 
   if (userError) {
-    return { error: userError.message };
+    return { error: toUserFacingError(userError, "You must be logged in.") };
   }
 
   if (!data.user) {
@@ -67,7 +65,9 @@ export async function completeOnboarding(
     .maybeSingle();
 
   if (updateError) {
-    return { error: updateError.message };
+    return {
+      error: toUserFacingError(updateError, "Unable to save onboarding."),
+    };
   }
 
   if (!updated) {
@@ -77,7 +77,9 @@ export async function completeOnboarding(
     });
 
     if (insertError) {
-      return { error: insertError.message };
+      return {
+        error: toUserFacingError(insertError, "Unable to save onboarding."),
+      };
     }
   }
 

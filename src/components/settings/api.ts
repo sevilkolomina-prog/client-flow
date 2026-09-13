@@ -7,26 +7,13 @@ import {
   type ProfileFormValues,
   type ProfileRow,
 } from "@/components/settings/data";
+import { toUserFacingError } from "@/lib/errors";
 
 const profileSelect =
   "id, full_name, company_name, phone, plan, subscription_status, created_at, updated_at";
 
 function getErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof error.message === "string" &&
-    error.message
-  ) {
-    return error.message;
-  }
-
-  return fallback;
+  return toUserFacingError(error, fallback);
 }
 
 function metadataFullName(user: {
@@ -42,7 +29,9 @@ async function requireUser() {
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(
+      toUserFacingError(error, "You must be logged in to manage your profile.")
+    );
   }
 
   if (!data.user) {

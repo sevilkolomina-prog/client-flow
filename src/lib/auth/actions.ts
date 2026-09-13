@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getAuthOrigin, getPasswordResetRedirectTo } from "@/lib/auth/origin";
+import { APP_CONFIG_ERROR, toUserFacingError } from "@/lib/errors";
 import {
   PASSWORD_RECOVERY_COOKIE,
   PASSWORD_RESET_PENDING_COOKIE,
@@ -21,10 +22,7 @@ export type AuthActionState = {
 };
 
 function missingConfigState(): AuthActionState {
-  return {
-    error:
-      "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local.",
-  };
+  return { error: APP_CONFIG_ERROR };
 }
 
 export async function login(
@@ -46,7 +44,7 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: error.message };
+    return { error: toUserFacingError(error, "Unable to log in.") };
   }
 
   const { data } = await supabase.auth.getUser();
@@ -92,7 +90,7 @@ export async function signup(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: toUserFacingError(error, "Unable to create an account.") };
   }
 
   if (!data.session) {
@@ -144,7 +142,9 @@ export async function requestPasswordReset(
   });
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserFacingError(error, "Unable to send a password reset email."),
+    };
   }
 
   return {
@@ -180,7 +180,12 @@ export async function updatePassword(
   const { data, error: userError } = await supabase.auth.getUser();
 
   if (userError) {
-    return { error: userError.message };
+    return {
+      error: toUserFacingError(
+        userError,
+        "This reset link is invalid or has expired. Request a new one."
+      ),
+    };
   }
 
   if (!data.user) {
@@ -192,7 +197,7 @@ export async function updatePassword(
   const { error } = await supabase.auth.updateUser({ password });
 
   if (error) {
-    return { error: error.message };
+    return { error: toUserFacingError(error, "Unable to update password.") };
   }
 
   const cookieStore = await cookies();

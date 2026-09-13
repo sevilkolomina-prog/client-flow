@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -8,6 +9,7 @@ import {
   type Invoice,
 } from "@/components/invoices/data";
 import { InvoiceStatusBadge } from "@/components/invoices/invoice-status-badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -44,9 +46,14 @@ export function RecentInvoices({
             Loading invoices...
           </div>
         ) : invoices.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            No invoices yet. Create an invoice to see it here.
-          </p>
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              No invoices yet. Create an invoice to see it here.
+            </p>
+            <Button nativeButton={false} render={<Link href="/invoices" />}>
+              Create an invoice
+            </Button>
+          </div>
         ) : (
           <>
             <div className="hidden overflow-x-auto md:block">

@@ -21,9 +21,7 @@ export function createAdminClient() {
   const serviceRoleKey = getSupabaseServiceRoleKey();
 
   if (!env || !serviceRoleKey) {
-    throw new Error(
-      "Supabase service role is not configured. Add SUPABASE_SERVICE_ROLE_KEY."
-    );
+    throw new Error("Supabase admin access is not configured.");
   }
 
   return createClient(env.url, serviceRoleKey, {

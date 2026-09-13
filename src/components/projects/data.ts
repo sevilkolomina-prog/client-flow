@@ -1,5 +1,3 @@
-import { initialClients } from "@/components/clients/data";
-
 export type ProjectStatus = "Planning" | "In Progress" | "Completed" | "On Hold";
 
 export type Project = {
@@ -109,83 +107,6 @@ export function toProjectPayload(userId: string, values: ProjectFormValues) {
     due_date: values.dueDate,
   };
 }
-
-export const projectClientNames = initialClients.map((client) => client.company);
-
-export const initialProjects: Project[] = [
-  {
-    id: "project-1",
-    clientId: "client-1",
-    name: "Brand Refresh",
-    client: "Acme Co",
-    description: "Update brand identity, color system, and core marketing templates.",
-    status: "In Progress",
-    value: 12400,
-    startDate: "2026-07-14",
-    dueDate: "2026-09-18",
-    progress: 62,
-  },
-  {
-    id: "project-2",
-    clientId: "client-2",
-    name: "Website Redesign",
-    client: "Northwind",
-    description: "Rebuild the marketing site with a clearer services and case-study flow.",
-    status: "Planning",
-    value: 18000,
-    startDate: "2026-09-08",
-    dueDate: "2026-10-12",
-    progress: 15,
-  },
-  {
-    id: "project-3",
-    clientId: "client-3",
-    name: "Mobile App",
-    client: "Globex",
-    description: "Design and ship the first customer-facing iOS and Android experience.",
-    status: "In Progress",
-    value: 24500,
-    startDate: "2026-06-02",
-    dueDate: "2026-10-03",
-    progress: 48,
-  },
-  {
-    id: "project-4",
-    clientId: "client-4",
-    name: "Q3 Campaign",
-    client: "Initech",
-    description: "Launch the fall campaign across email, landing pages, and paid ads.",
-    status: "On Hold",
-    value: 6200,
-    startDate: "2026-08-01",
-    dueDate: "2026-10-22",
-    progress: 30,
-  },
-  {
-    id: "project-5",
-    clientId: "client-6",
-    name: "Brand System",
-    client: "Brightline Studio",
-    description: "Deliver a complete design system for product and marketing teams.",
-    status: "Completed",
-    value: 9800,
-    startDate: "2026-05-11",
-    dueDate: "2026-08-28",
-    progress: 100,
-  },
-  {
-    id: "project-6",
-    clientId: "client-5",
-    name: "Lab Portal",
-    client: "Umbrella Labs",
-    description: "Build a client portal for sample tracking and report delivery.",
-    status: "Planning",
-    value: 15750,
-    startDate: "2026-09-15",
-    dueDate: "2026-11-06",
-    progress: 8,
-  },
-];
 
 export function isProjectStatus(value: string): value is ProjectStatus {
   return projectStatuses.includes(value as ProjectStatus);

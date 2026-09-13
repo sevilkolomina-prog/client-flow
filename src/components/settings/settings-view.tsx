@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toUserFacingError } from "@/lib/errors";
 
 const emptyProfile: Profile = {
   id: "",
@@ -68,9 +69,7 @@ export function SettingsView() {
       const nextProfile = await fetchOrCreateProfile();
       applyProfile(nextProfile);
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to load profile."
-      );
+      setError(toUserFacingError(caught, "Unable to load profile."));
     } finally {
       setLoading(false);
     }
@@ -89,11 +88,7 @@ export function SettingsView() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : "Unable to load profile."
-          );
+          setError(toUserFacingError(caught, "Unable to load profile."));
           setLoading(false);
         }
       });
@@ -123,9 +118,7 @@ export function SettingsView() {
       applyProfile(updated);
       setSuccess("Profile saved.");
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to save profile."
-      );
+      setError(toUserFacingError(caught, "Unable to save profile."));
     } finally {
       setSaving(false);
     }
@@ -144,7 +137,9 @@ export function SettingsView() {
       const result = await createBillingPortalSession();
 
       if (result?.error) {
-        setPortalError(result.error);
+        setPortalError(
+          toUserFacingError(result.error, "Unable to open billing management.")
+        );
       }
     });
   }
@@ -269,7 +264,7 @@ export function SettingsView() {
               </div>
 
               <div>
-                <Button type="submit" disabled={saving}>
+                <Button type="submit" disabled={saving} aria-busy={saving}>
                   {saving ? (
                     <Loader2 data-icon="inline-start" className="animate-spin" />
                   ) : null}
@@ -311,6 +306,7 @@ export function SettingsView() {
                 type="button"
                 className="w-full sm:w-auto"
                 disabled={loading || portalPending}
+                aria-busy={portalPending}
                 onClick={handleManageSubscription}
               >
                 {portalPending ? (
@@ -359,6 +355,7 @@ export function SettingsView() {
             variant="outline"
             className="w-full sm:w-auto"
             disabled={logoutPending}
+            aria-busy={logoutPending}
             onClick={() => {
               startLogout(() => {
                 void logout();
@@ -366,7 +363,7 @@ export function SettingsView() {
             }}
           >
             <LogOut data-icon="inline-start" />
-            {logoutPending ? "Logging out..." : "Logout"}
+            {logoutPending ? "Logging out..." : "Log out"}
           </Button>
         </CardContent>
       </Card>

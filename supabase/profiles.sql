@@ -1,5 +1,6 @@
 -- Profiles table, RLS, and policies for ClientFlow.
--- Run this in the Supabase SQL Editor after clients.sql.
+-- Run this first in the Supabase SQL Editor, before onboarding.sql.
+-- Independent of clients.sql.
 
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,

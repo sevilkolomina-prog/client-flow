@@ -28,6 +28,7 @@ import {
   hasReachedFreePlanLimit,
 } from "@/lib/billing/limits";
 import { parsePlan, type PlanId } from "@/lib/billing/plans";
+import { toUserFacingError } from "@/lib/errors";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -59,16 +60,7 @@ function countProjectsByClient(projects: { clientId: string }[]) {
 }
 
 function toFormError(caught: unknown, fallback: string) {
-  const message = caught instanceof Error ? caught.message : "";
-
-  if (
-    !message ||
-    /minified react error|#441|server components render/i.test(message)
-  ) {
-    return fallback;
-  }
-
-  return message;
+  return toUserFacingError(caught, fallback);
 }
 
 export function ClientsView() {
@@ -111,9 +103,7 @@ export function ClientsView() {
       setProjectCounts(countProjectsByClient(nextProjects));
       setPlan(parsePlan(profile.plan));
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to load clients."
-      );
+      setError(toFormError(caught, "Unable to load clients."));
     } finally {
       setLoading(false);
     }
@@ -134,9 +124,7 @@ export function ClientsView() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(
-            caught instanceof Error ? caught.message : "Unable to load clients."
-          );
+          setError(toFormError(caught, "Unable to load clients."));
           setLoading(false);
         }
       });
@@ -193,7 +181,7 @@ export function ClientsView() {
         const created = result.client;
 
         if (result.error || !created) {
-          setFormError(result.error ?? "Unable to add client.");
+          setFormError(toFormError(result.error, "Unable to add client."));
           return;
         }
 
@@ -206,6 +194,10 @@ export function ClientsView() {
   }
 
   async function handleDelete(client: Client) {
+    if (deletingId) {
+      return;
+    }
+
     setDeletingId(client.id);
     setError(null);
 
@@ -215,9 +207,7 @@ export function ClientsView() {
         current.filter((item) => item.id !== client.id)
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to delete client."
-      );
+      setError(toFormError(caught, "Unable to delete client."));
     } finally {
       setDeletingId(null);
     }
@@ -306,8 +296,23 @@ export function ClientsView() {
         </Card>
       ) : visibleClients.length === 0 ? (
         <Card className="bg-card shadow-xs">
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {emptyMessage}
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            {clients.length === 0 ? (
+              clientLimitReached ? (
+                <Button
+                  nativeButton={false}
+                  render={<Link href="/pricing" />}
+                >
+                  Upgrade to add more clients
+                </Button>
+              ) : (
+                <Button type="button" onClick={openAddDialog}>
+                  <Plus data-icon="inline-start" />
+                  Add Client
+                </Button>
+              )
+            ) : null}
           </CardContent>
         </Card>
       ) : (

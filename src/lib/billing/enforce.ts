@@ -5,6 +5,7 @@ import {
   FREE_PROJECT_LIMIT_MESSAGE,
 } from "@/lib/billing/limits";
 import { isPaidPlan, parsePlan, type PlanId } from "@/lib/billing/plans";
+import { extractErrorMessage, toUserFacingError } from "@/lib/errors";
 import { createClient } from "@/lib/supabase/server";
 
 type AuthedProfile = {
@@ -13,36 +14,16 @@ type AuthedProfile = {
   plan: PlanId;
 };
 
-function errorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof error.message === "string" &&
-    error.message
-  ) {
-    return error.message;
-  }
-
-  return fallback;
-}
-
 export function asLimitOrFallback(
   error: unknown,
   expected: string,
   fallback: string
 ) {
-  const message = errorMessage(error, fallback);
-
-  if (message.includes(expected)) {
+  if (extractErrorMessage(error).includes(expected)) {
     return expected;
   }
 
-  return message;
+  return toUserFacingError(error, fallback);
 }
 
 export async function requireAuthedPlan(): Promise<AuthedProfile> {
@@ -50,7 +31,7 @@ export async function requireAuthedPlan(): Promise<AuthedProfile> {
   const { data, error } = await supabase.auth.getUser();
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(toUserFacingError(error, "You must be logged in."));
   }
 
   if (!data.user) {
@@ -64,7 +45,7 @@ export async function requireAuthedPlan(): Promise<AuthedProfile> {
     .maybeSingle();
 
   if (profileError) {
-    throw new Error(profileError.message);
+    throw new Error(toUserFacingError(profileError, "Unable to load your plan."));
   }
 
   return {
@@ -85,7 +66,7 @@ async function countOwnRows(
     .eq("user_id", userId);
 
   if (error) {
-    throw new Error(error.message);
+    throw new Error(toUserFacingError(error, "Unable to check plan limits."));
   }
 
   return count ?? 0;

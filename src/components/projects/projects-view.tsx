@@ -32,6 +32,7 @@ import {
   hasReachedFreePlanLimit,
 } from "@/lib/billing/limits";
 import { parsePlan, type PlanId } from "@/lib/billing/plans";
+import { toUserFacingError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,16 +53,7 @@ import {
 } from "@/components/ui/table";
 
 function toFormError(caught: unknown, fallback: string) {
-  const message = caught instanceof Error ? caught.message : "";
-
-  if (
-    !message ||
-    /minified react error|#441|server components render/i.test(message)
-  ) {
-    return fallback;
-  }
-
-  return message;
+  return toUserFacingError(caught, fallback);
 }
 
 export function ProjectsView() {
@@ -102,9 +94,7 @@ export function ProjectsView() {
       setClients(nextClients);
       setPlan(parsePlan(profile.plan));
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to load projects."
-      );
+      setError(toFormError(caught, "Unable to load projects."));
     } finally {
       setLoading(false);
     }
@@ -125,11 +115,7 @@ export function ProjectsView() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : "Unable to load projects."
-          );
+          setError(toFormError(caught, "Unable to load projects."));
           setLoading(false);
         }
       });
@@ -186,7 +172,7 @@ export function ProjectsView() {
         const created = result.project;
 
         if (result.error || !created) {
-          setFormError(result.error ?? "Unable to add project.");
+          setFormError(toFormError(result.error, "Unable to add project."));
           return;
         }
 
@@ -199,6 +185,10 @@ export function ProjectsView() {
   }
 
   async function handleDelete(project: Project) {
+    if (deletingId) {
+      return;
+    }
+
     setDeletingId(project.id);
     setError(null);
 
@@ -208,9 +198,7 @@ export function ProjectsView() {
         current.filter((item) => item.id !== project.id)
       );
     } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "Unable to delete project."
-      );
+      setError(toFormError(caught, "Unable to delete project."));
     } finally {
       setDeletingId(null);
     }
@@ -312,8 +300,24 @@ export function ProjectsView() {
         </Card>
       ) : visibleProjects.length === 0 ? (
         <Card className="bg-card shadow-xs">
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            {emptyMessage}
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+            {projects.length === 0 ? (
+              clients.length === 0 ? (
+                <Button nativeButton={false} render={<Link href="/clients" />}>
+                  Add a client first
+                </Button>
+              ) : projectLimitReached ? (
+                <Button nativeButton={false} render={<Link href="/pricing" />}>
+                  Upgrade to add more projects
+                </Button>
+              ) : (
+                <Button type="button" onClick={openAddDialog}>
+                  <Plus data-icon="inline-start" />
+                  New Project
+                </Button>
+              )
+            ) : null}
           </CardContent>
         </Card>
       ) : (

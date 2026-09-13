@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
 import { getInitials, type Client } from "@/components/clients/data";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -33,9 +35,14 @@ export function RecentClients({
             Loading clients...
           </div>
         ) : clients.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">
-            No clients yet. Add a client to see it here.
-          </p>
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <p className="text-sm text-muted-foreground">
+              No clients yet. Add a client to see it here.
+            </p>
+            <Button nativeButton={false} render={<Link href="/clients" />}>
+              Add a client
+            </Button>
+          </div>
         ) : (
           clients.map((client) => (
             <div key={client.id} className="flex items-center gap-3">

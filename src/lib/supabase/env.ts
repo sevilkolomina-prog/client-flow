@@ -1,3 +1,5 @@
+import { APP_CONFIG_ERROR } from "@/lib/errors";
+
 export function getSupabaseEnv() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -13,9 +15,7 @@ export function requireSupabaseEnv() {
   const env = getSupabaseEnv();
 
   if (!env) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY."
-    );
+    throw new Error(APP_CONFIG_ERROR);
   }
 
   return env;

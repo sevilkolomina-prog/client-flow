@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 
 import { type PaidPlanId } from "@/lib/billing/plans";
+import { logServerError } from "@/lib/errors";
 
 type StripeServerEnv = {
   secretKey: string;
@@ -129,12 +130,8 @@ export async function assertCheckoutPrice(
   try {
     price = await stripe.prices.retrieve(priceId);
   } catch (caught) {
-    const message =
-      caught instanceof Error && caught.message
-        ? caught.message
-        : "Unable to load the Stripe price.";
-
-    return { error: message };
+    logServerError("billing-price", caught);
+    return { error: "Unable to load the Stripe price." };
   }
 
   const expectedAmount = PAID_PRICE_AMOUNT[plan];
