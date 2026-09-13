@@ -88,6 +88,14 @@ function redirectWithCookies(
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+
+  if (
+    pathname === "/api/stripe/webhook" ||
+    pathname.startsWith("/api/stripe/webhook/")
+  ) {
+    return NextResponse.next({ request });
+  }
+
   const env = getSupabaseEnv();
   const isRecovery = isPasswordRecoveryRequest({
     searchParams: request.nextUrl.searchParams,

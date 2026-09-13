@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: "Pricing",
 };
 
-export default function PricingPage() {
-  return <PricingView />;
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
+  const params = await searchParams;
+
+  return <PricingView checkout={params.checkout ?? null} />;
 }

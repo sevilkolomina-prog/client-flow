@@ -56,6 +56,12 @@ export const plans: Plan[] = [
   },
 ];
 
+export type PaidPlanId = Exclude<PlanId, "free">;
+
+export function isPaidPlan(value: unknown): value is PaidPlanId {
+  return value === "pro" || value === "business";
+}
+
 export function parsePlan(value: unknown): PlanId {
   if (value === "pro" || value === "business" || value === "free") {
     return value;
