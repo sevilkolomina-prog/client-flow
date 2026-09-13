@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, DollarSign, FolderKanban, Loader } from "lucide-react";
+import { CircleCheck, Clock, DollarSign, FolderKanban } from "lucide-react";
 
 import {
   formatProjectValue,
@@ -17,7 +17,7 @@ import {
 
 const summaryMeta = [
   { key: "total", title: "Total Projects", icon: FolderKanban },
-  { key: "inProgress", title: "In Progress", icon: Loader },
+  { key: "inProgress", title: "In Progress", icon: Clock },
   { key: "completed", title: "Completed", icon: CircleCheck },
   { key: "value", title: "Total Project Value", icon: DollarSign },
 ] as const;

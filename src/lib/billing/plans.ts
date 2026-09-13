@@ -88,5 +88,25 @@ export function subscriptionStatusLabel(status: string | null | undefined) {
     return "None";
   }
 
-  return trimmed;
+  switch (trimmed.toLowerCase()) {
+    case "active":
+      return "Active";
+    case "trialing":
+      return "Trialing";
+    case "past_due":
+      return "Past due";
+    case "canceled":
+    case "cancelled":
+      return "Canceled";
+    case "unpaid":
+      return "Unpaid";
+    case "incomplete":
+      return "Incomplete";
+    case "incomplete_expired":
+      return "Expired";
+    case "paused":
+      return "Paused";
+    default:
+      return trimmed.replace(/_/g, " ");
+  }
 }

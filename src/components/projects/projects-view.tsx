@@ -197,7 +197,9 @@ export function ProjectsView() {
 
   const emptyMessage =
     projects.length === 0
-      ? "No projects yet. Create your first project to get started."
+      ? clients.length === 0
+        ? "No projects yet. Add a client first, then create a project."
+        : "No projects yet. Create your first project to get started."
       : "No projects match your search.";
 
   return (
@@ -218,7 +220,11 @@ export function ProjectsView() {
             Free plan limit reached — Upgrade
           </Button>
         ) : (
-          <Button className="w-full sm:w-auto" onClick={openAddDialog}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={openAddDialog}
+            disabled={clients.length === 0}
+          >
             <Plus data-icon="inline-start" />
             New Project
           </Button>
@@ -291,8 +297,8 @@ export function ProjectsView() {
         </Card>
       ) : (
         <>
-          <Card className="hidden bg-card shadow-xs md:block">
-            <CardContent className="px-0">
+          <Card className="hidden overflow-hidden bg-card shadow-xs md:block">
+            <CardContent className="overflow-x-auto px-0">
               <Table>
                 <TableHeader>
                   <TableRow>

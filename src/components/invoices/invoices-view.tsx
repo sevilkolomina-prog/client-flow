@@ -208,7 +208,9 @@ export function InvoicesView() {
 
   const emptyMessage =
     invoices.length === 0
-      ? "No invoices yet. Create your first invoice to get started."
+      ? clients.length === 0
+        ? "No invoices yet. Add a client and project first."
+        : "No invoices yet. Create your first invoice to get started."
       : "No invoices match your search.";
 
   return (
@@ -220,7 +222,11 @@ export function InvoicesView() {
             Create and track client invoices
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={openAddDialog}>
+        <Button
+          className="w-full sm:w-auto"
+          onClick={openAddDialog}
+          disabled={clients.length === 0}
+        >
           <Plus data-icon="inline-start" />
           New Invoice
         </Button>
@@ -292,8 +298,8 @@ export function InvoicesView() {
         </Card>
       ) : (
         <>
-          <Card className="hidden bg-card shadow-xs md:block">
-            <CardContent className="px-0">
+          <Card className="hidden overflow-hidden bg-card shadow-xs md:block">
+            <CardContent className="overflow-x-auto px-0">
               <Table>
                 <TableHeader>
                   <TableRow>

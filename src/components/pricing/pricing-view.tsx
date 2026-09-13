@@ -4,7 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { Check, Loader2 } from "lucide-react";
 
 import { fetchOrCreateProfile } from "@/components/settings/api";
-import { createCheckoutSession } from "@/lib/billing/actions";
+import {
+  createBillingPortalSession,
+  createCheckoutSession,
+} from "@/lib/billing/actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,12 +48,15 @@ export function PricingView({ checkout = null }: PricingViewProps) {
   const [pendingPlan, setPendingPlan] = useState<PaidPlanId | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [awaitingPlan, setAwaitingPlan] = useState(checkout === "success");
   const paidCheckout = isPaidPlan(currentPlan);
   const notice =
     checkout === "success"
       ? paidCheckout
         ? "Your subscription is active."
-        : "Payment received. We are confirming your subscription."
+        : awaitingPlan || loading
+          ? "Payment received. We are confirming your subscription."
+          : "Payment received. Refresh this page if your plan does not update shortly."
       : checkoutNotice(checkout);
 
   useEffect(() => {
@@ -68,15 +74,16 @@ export function PricingView({ checkout = null }: PricingViewProps) {
         setError(null);
         setLoading(false);
 
-        if (
-          checkout === "success" &&
-          retries > 0 &&
-          !isPaidPlan(parsePlan(profile.plan))
-        ) {
+        if (isPaidPlan(parsePlan(profile.plan))) {
+          setAwaitingPlan(false);
+        } else if (checkout === "success" && retries > 0) {
+          setAwaitingPlan(true);
           await new Promise((resolve) => setTimeout(resolve, 1500));
           if (!cancelled) {
             await loadProfile(retries - 1);
           }
+        } else {
+          setAwaitingPlan(false);
         }
       } catch (caught: unknown) {
         if (!cancelled) {
@@ -105,7 +112,9 @@ export function PricingView({ checkout = null }: PricingViewProps) {
     setError(null);
     setPendingPlan(planId);
     startTransition(async () => {
-      const result = await createCheckoutSession(planId);
+      const result = isPaidPlan(currentPlan)
+        ? await createBillingPortalSession()
+        : await createCheckoutSession(planId);
 
       if (result?.error) {
         setError(result.error);
@@ -119,7 +128,7 @@ export function PricingView({ checkout = null }: PricingViewProps) {
       <div className="space-y-1">
         <h2 className="text-2xl font-semibold tracking-tight">Pricing</h2>
         <p className="text-muted-foreground">
-          Choose the plan that fits your business. Checkout uses Stripe sandbox.
+          Choose the plan that fits your business.
         </p>
       </div>
 
@@ -145,15 +154,23 @@ export function PricingView({ checkout = null }: PricingViewProps) {
         {plans.map((plan) => {
           const isCurrent = plan.id === currentPlan;
           const isCheckoutPending = pending && pendingPlan === plan.id;
+          const isSwitch =
+            isPaidPlan(currentPlan) && isPaidPlan(plan.id) && !isCurrent;
           const buttonLabel = isCurrent
             ? "Current Plan"
             : isCheckoutPending
-              ? "Redirecting to checkout..."
-              : plan.id === "pro"
-                ? "Upgrade to Pro"
-                : plan.id === "business"
-                  ? "Upgrade to Business"
-                  : "Free";
+              ? isSwitch
+                ? "Opening portal..."
+                : "Redirecting to checkout..."
+              : isSwitch
+                ? plan.id === "business"
+                  ? "Switch to Business"
+                  : "Switch to Pro"
+                : plan.id === "pro"
+                  ? "Upgrade to Pro"
+                  : plan.id === "business"
+                    ? "Upgrade to Business"
+                    : "Free";
 
           return (
             <Card

@@ -44,11 +44,13 @@ export function Header() {
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation</SheetTitle>
           </SheetHeader>
-          <Sidebar onNavigate={() => setOpen(false)} />
+          <Sidebar className="h-full min-h-0" onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
-      <h1 className="text-lg font-semibold tracking-tight">{title}</h1>
+      <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
+        {title}
+      </h1>
 
       <div className="relative z-30 ml-auto">
         <UserMenu />

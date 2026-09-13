@@ -38,7 +38,6 @@ export function ProjectActionsMenu({
         <MoreHorizontal />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem>View</DropdownMenuItem>
         <DropdownMenuItem onClick={onEdit}>Edit</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

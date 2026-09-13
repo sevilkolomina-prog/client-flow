@@ -66,7 +66,8 @@ export function DashboardView() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <p className="text-sm text-muted-foreground">
+        <h2 className="text-2xl font-semibold tracking-tight">Dashboard</h2>
+        <p className="text-muted-foreground">
           A snapshot of your clients, projects, and revenue.
         </p>
       </div>

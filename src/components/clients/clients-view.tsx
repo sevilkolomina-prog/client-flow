@@ -10,6 +10,7 @@ import {
   fetchClients,
   updateClientRecord,
 } from "@/components/clients/api";
+import { fetchProjects } from "@/components/projects/api";
 import { ClientActionsMenu } from "@/components/clients/client-actions-menu";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
 import { ClientStatusBadge } from "@/components/clients/client-status-badge";
@@ -47,8 +48,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+function countProjectsByClient(projects: { clientId: string }[]) {
+  const counts: Record<string, number> = {};
+
+  for (const project of projects) {
+    counts[project.clientId] = (counts[project.clientId] ?? 0) + 1;
+  }
+
+  return counts;
+}
+
 export function ClientsView() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [projectCounts, setProjectCounts] = useState<Record<string, number>>(
+    {}
+  );
   const [plan, setPlan] = useState<PlanId>("free");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ClientStatusFilter>("All");
@@ -75,11 +89,13 @@ export function ClientsView() {
     setError(null);
 
     try {
-      const [nextClients, profile] = await Promise.all([
+      const [nextClients, nextProjects, profile] = await Promise.all([
         fetchClients(),
+        fetchProjects(),
         fetchOrCreateProfile(),
       ]);
       setClients(nextClients);
+      setProjectCounts(countProjectsByClient(nextProjects));
       setPlan(parsePlan(profile.plan));
     } catch (caught) {
       setError(
@@ -93,10 +109,11 @@ export function ClientsView() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([fetchClients(), fetchOrCreateProfile()])
-      .then(([nextClients, profile]) => {
+    Promise.all([fetchClients(), fetchProjects(), fetchOrCreateProfile()])
+      .then(([nextClients, nextProjects, profile]) => {
         if (!cancelled) {
           setClients(nextClients);
+          setProjectCounts(countProjectsByClient(nextProjects));
           setPlan(parsePlan(profile.plan));
           setError(null);
           setLoading(false);
@@ -274,8 +291,8 @@ export function ClientsView() {
         </Card>
       ) : (
         <>
-          <Card className="hidden bg-card shadow-xs md:block">
-            <CardContent className="px-0">
+          <Card className="hidden overflow-hidden bg-card shadow-xs md:block">
+            <CardContent className="overflow-x-auto px-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -308,7 +325,7 @@ export function ClientsView() {
                       <TableCell className="text-muted-foreground">
                         {client.phone}
                       </TableCell>
-                      <TableCell>0</TableCell>
+                      <TableCell>{projectCounts[client.id] ?? 0}</TableCell>
                       <TableCell>
                         <ClientStatusBadge status={client.status} />
                       </TableCell>
@@ -361,7 +378,7 @@ export function ClientsView() {
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Projects</dt>
-                      <dd>0</dd>
+                      <dd>{projectCounts[client.id] ?? 0}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Status</dt>

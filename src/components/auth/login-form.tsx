@@ -60,7 +60,7 @@ export function LoginForm({ resetSuccess = false }: { resetSuccess?: boolean }) 
       </div>
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? <Loader2 data-icon="inline-start" className="animate-spin" /> : null}
-        {pending ? "Logging in..." : "Login"}
+        {pending ? "Logging in..." : "Log in"}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}

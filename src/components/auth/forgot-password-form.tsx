@@ -72,7 +72,7 @@ export function ForgotPasswordForm({
           href="/login"
           className="font-medium text-foreground underline-offset-4 hover:underline"
         >
-          Login
+          Log in
         </Link>
       </p>
     </form>

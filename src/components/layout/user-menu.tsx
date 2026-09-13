@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LogOut, Settings } from "lucide-react";
 
 import { logout } from "@/lib/auth/actions";
 import { getSupabaseEnv } from "@/lib/supabase/env";
@@ -28,6 +29,7 @@ function getInitials(value: string) {
 }
 
 export function UserMenu() {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("ClientFlow");
@@ -91,6 +93,16 @@ export function UserMenu() {
             </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={() => {
+            setOpen(false);
+            router.push("/settings");
+          }}
+        >
+          <Settings />
+          Settings
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={pending} onClick={handleLogout}>
           <LogOut />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 
 import { logout } from "@/lib/auth/actions";
@@ -36,6 +36,7 @@ export function OnboardingForm({
     initialState
   );
   const [selectedType, setSelectedType] = useState(businessType);
+  const [logoutPending, startLogout] = useTransition();
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -101,7 +102,12 @@ export function OnboardingForm({
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={pending || !selectedType}
+      >
         {pending ? (
           <Loader2 data-icon="inline-start" className="animate-spin" />
         ) : null}
@@ -111,12 +117,14 @@ export function OnboardingForm({
         type="button"
         variant="ghost"
         className="w-full"
-        disabled={pending}
+        disabled={pending || logoutPending}
         onClick={() => {
-          void logout();
+          startLogout(() => {
+            void logout();
+          });
         }}
       >
-        Log out
+        {logoutPending ? "Logging out..." : "Log out"}
       </Button>
     </form>
   );

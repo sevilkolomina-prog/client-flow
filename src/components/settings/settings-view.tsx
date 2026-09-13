@@ -161,7 +161,7 @@ export function SettingsView() {
       {error ? (
         <div className="flex flex-col gap-3 rounded-lg bg-destructive/10 px-3 py-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
           <p role="alert">{error}</p>
-          {loading ? null : (
+          {loading ? null : !profile.id ? (
             <Button
               type="button"
               variant="outline"
@@ -170,7 +170,7 @@ export function SettingsView() {
             >
               Retry
             </Button>
-          )}
+          ) : null}
         </div>
       ) : null}
 
