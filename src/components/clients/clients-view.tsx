@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Search } from "lucide-react";
 
@@ -58,6 +58,19 @@ function countProjectsByClient(projects: { clientId: string }[]) {
   return counts;
 }
 
+function toFormError(caught: unknown, fallback: string) {
+  const message = caught instanceof Error ? caught.message : "";
+
+  if (
+    !message ||
+    /minified react error|#441|server components render/i.test(message)
+  ) {
+    return fallback;
+  }
+
+  return message;
+}
+
 export function ClientsView() {
   const [clients, setClients] = useState<Client[]>([]);
   const [projectCounts, setProjectCounts] = useState<Record<string, number>>(
@@ -70,9 +83,9 @@ export function ClientsView() {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [formPending, setFormPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formPending, startFormTransition] = useTransition();
 
   const visibleClients = useMemo(
     () => filterClients(clients, query, status),
@@ -158,30 +171,38 @@ export function ClientsView() {
   }
 
   async function handleSubmit(values: ClientFormValues) {
-    setFormPending(true);
-    setFormError(null);
-
-    try {
-      if (editingClient) {
-        const updated = await updateClientRecord(editingClient.id, values);
-        setClients((current) =>
-          current.map((client) =>
-            client.id === updated.id ? updated : client
-          )
-        );
-      } else {
-        const created = await createClientRecord(values);
-        setClients((current) => [created, ...current]);
-      }
-
-      handleDialogOpenChange(false);
-    } catch (caught) {
-      setFormError(
-        caught instanceof Error ? caught.message : "Unable to save client."
-      );
-    } finally {
-      setFormPending(false);
+    if (formPending) {
+      return;
     }
+
+    setFormError(null);
+    startFormTransition(async () => {
+      try {
+        if (editingClient) {
+          const updated = await updateClientRecord(editingClient.id, values);
+          setClients((current) =>
+            current.map((client) =>
+              client.id === updated.id ? updated : client
+            )
+          );
+          handleDialogOpenChange(false);
+          return;
+        }
+
+        const result = await createClientRecord(values);
+        const created = result.client;
+
+        if (result.error || !created) {
+          setFormError(result.error ?? "Unable to add client.");
+          return;
+        }
+
+        setClients((current) => [created, ...current]);
+        handleDialogOpenChange(false);
+      } catch (caught) {
+        setFormError(toFormError(caught, "Unable to save client."));
+      }
+    });
   }
 
   async function handleDelete(client: Client) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, Plus, Search } from "lucide-react";
 
@@ -51,6 +51,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+function toFormError(caught: unknown, fallback: string) {
+  const message = caught instanceof Error ? caught.message : "";
+
+  if (
+    !message ||
+    /minified react error|#441|server components render/i.test(message)
+  ) {
+    return fallback;
+  }
+
+  return message;
+}
+
 export function ProjectsView() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<ProjectClientOption[]>([]);
@@ -61,9 +74,9 @@ export function ProjectsView() {
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [formPending, setFormPending] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [formPending, startFormTransition] = useTransition();
 
   const visibleProjects = useMemo(
     () => filterProjects(projects, query, status),
@@ -151,30 +164,38 @@ export function ProjectsView() {
   }
 
   async function handleSubmit(values: ProjectFormValues) {
-    setFormPending(true);
-    setFormError(null);
-
-    try {
-      if (editingProject) {
-        const updated = await updateProjectRecord(editingProject.id, values);
-        setProjects((current) =>
-          current.map((project) =>
-            project.id === updated.id ? updated : project
-          )
-        );
-      } else {
-        const created = await createProjectRecord(values);
-        setProjects((current) => [created, ...current]);
-      }
-
-      handleDialogOpenChange(false);
-    } catch (caught) {
-      setFormError(
-        caught instanceof Error ? caught.message : "Unable to save project."
-      );
-    } finally {
-      setFormPending(false);
+    if (formPending) {
+      return;
     }
+
+    setFormError(null);
+    startFormTransition(async () => {
+      try {
+        if (editingProject) {
+          const updated = await updateProjectRecord(editingProject.id, values);
+          setProjects((current) =>
+            current.map((project) =>
+              project.id === updated.id ? updated : project
+            )
+          );
+          handleDialogOpenChange(false);
+          return;
+        }
+
+        const result = await createProjectRecord(values);
+        const created = result.project;
+
+        if (result.error || !created) {
+          setFormError(result.error ?? "Unable to add project.");
+          return;
+        }
+
+        setProjects((current) => [created, ...current]);
+        handleDialogOpenChange(false);
+      } catch (caught) {
+        setFormError(toFormError(caught, "Unable to save project."));
+      }
+    });
   }
 
   async function handleDelete(project: Project) {
