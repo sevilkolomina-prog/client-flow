@@ -47,32 +47,6 @@ export async function fetchClients(): Promise<Client[]> {
   return (data as ClientRow[]).map(mapClientRow);
 }
 
-export async function createClientRecord(
-  values: ClientFormValues
-): Promise<Client> {
-  const { supabase, userId } = await requireUserId();
-  const { data, error } = await supabase
-    .from("clients")
-    .insert({
-      user_id: userId,
-      full_name: values.name.trim(),
-      company: values.company.trim(),
-      email: values.email.trim(),
-      phone: values.phone.trim(),
-      status: values.status,
-    })
-    .select(
-      "id, user_id, full_name, company, email, phone, status, created_at, updated_at"
-    )
-    .single();
-
-  if (error) {
-    throw new Error(getErrorMessage(error, "Unable to add client."));
-  }
-
-  return mapClientRow(data as ClientRow);
-}
-
 export async function updateClientRecord(
   id: string,
   values: ClientFormValues

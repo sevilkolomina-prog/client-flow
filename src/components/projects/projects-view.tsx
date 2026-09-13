@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2, Plus, Search } from "lucide-react";
 
 import { fetchClients } from "@/components/clients/api";
+import { createProjectRecord } from "@/components/projects/actions";
 import {
-  createProjectRecord,
   deleteProjectRecord,
   fetchProjects,
   updateProjectRecord,
@@ -25,6 +26,12 @@ import {
   type ProjectFormValues,
   type ProjectStatusFilter,
 } from "@/components/projects/data";
+import { fetchOrCreateProfile } from "@/components/settings/api";
+import {
+  FREE_PROJECT_LIMIT,
+  hasReachedFreePlanLimit,
+} from "@/lib/billing/limits";
+import { parsePlan, type PlanId } from "@/lib/billing/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +54,7 @@ import {
 export function ProjectsView() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<ProjectClientOption[]>([]);
+  const [plan, setPlan] = useState<PlanId>("free");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ProjectStatusFilter>("All");
   const [loading, setLoading] = useState(true);
@@ -61,18 +69,25 @@ export function ProjectsView() {
     () => filterProjects(projects, query, status),
     [projects, query, status]
   );
+  const projectLimitReached = hasReachedFreePlanLimit(
+    plan,
+    projects.length,
+    FREE_PROJECT_LIMIT
+  );
 
   async function loadProjects() {
     setLoading(true);
     setError(null);
 
     try {
-      const [nextProjects, nextClients] = await Promise.all([
+      const [nextProjects, nextClients, profile] = await Promise.all([
         fetchProjects(),
         fetchClients(),
+        fetchOrCreateProfile(),
       ]);
       setProjects(nextProjects);
       setClients(nextClients);
+      setPlan(parsePlan(profile.plan));
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to load projects."
@@ -85,11 +100,12 @@ export function ProjectsView() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([fetchProjects(), fetchClients()])
-      .then(([nextProjects, nextClients]) => {
+    Promise.all([fetchProjects(), fetchClients(), fetchOrCreateProfile()])
+      .then(([nextProjects, nextClients, profile]) => {
         if (!cancelled) {
           setProjects(nextProjects);
           setClients(nextClients);
+          setPlan(parsePlan(profile.plan));
           setError(null);
           setLoading(false);
         }
@@ -111,6 +127,10 @@ export function ProjectsView() {
   }, []);
 
   function openAddDialog() {
+    if (projectLimitReached) {
+      return;
+    }
+
     setEditingProject(null);
     setFormError(null);
     setDialogOpen(true);
@@ -189,10 +209,20 @@ export function ProjectsView() {
             Manage and track your client projects
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={openAddDialog}>
-          <Plus data-icon="inline-start" />
-          New Project
-        </Button>
+        {projectLimitReached ? (
+          <Button
+            className="w-full sm:w-auto"
+            nativeButton={false}
+            render={<Link href="/pricing" />}
+          >
+            Free plan limit reached — Upgrade
+          </Button>
+        ) : (
+          <Button className="w-full sm:w-auto" onClick={openAddDialog}>
+            <Plus data-icon="inline-start" />
+            New Project
+          </Button>
+        )}
       </div>
 
       <ProjectSummaryCards projects={projects} />

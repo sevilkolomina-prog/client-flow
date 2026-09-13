@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Loader2, Plus, Search } from "lucide-react";
 
+import { createClientRecord } from "@/components/clients/actions";
 import {
-  createClientRecord,
   deleteClientRecord,
   fetchClients,
   updateClientRecord,
@@ -20,6 +21,12 @@ import {
   type ClientFormValues,
   type ClientStatusFilter,
 } from "@/components/clients/data";
+import { fetchOrCreateProfile } from "@/components/settings/api";
+import {
+  FREE_CLIENT_LIMIT,
+  hasReachedFreePlanLimit,
+} from "@/lib/billing/limits";
+import { parsePlan, type PlanId } from "@/lib/billing/plans";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +49,7 @@ import {
 
 export function ClientsView() {
   const [clients, setClients] = useState<Client[]>([]);
+  const [plan, setPlan] = useState<PlanId>("free");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ClientStatusFilter>("All");
   const [loading, setLoading] = useState(true);
@@ -56,14 +64,23 @@ export function ClientsView() {
     () => filterClients(clients, query, status),
     [clients, query, status]
   );
+  const clientLimitReached = hasReachedFreePlanLimit(
+    plan,
+    clients.length,
+    FREE_CLIENT_LIMIT
+  );
 
   async function loadClients() {
     setLoading(true);
     setError(null);
 
     try {
-      const nextClients = await fetchClients();
+      const [nextClients, profile] = await Promise.all([
+        fetchClients(),
+        fetchOrCreateProfile(),
+      ]);
       setClients(nextClients);
+      setPlan(parsePlan(profile.plan));
     } catch (caught) {
       setError(
         caught instanceof Error ? caught.message : "Unable to load clients."
@@ -76,10 +93,11 @@ export function ClientsView() {
   useEffect(() => {
     let cancelled = false;
 
-    fetchClients()
-      .then((nextClients) => {
+    Promise.all([fetchClients(), fetchOrCreateProfile()])
+      .then(([nextClients, profile]) => {
         if (!cancelled) {
           setClients(nextClients);
+          setPlan(parsePlan(profile.plan));
           setError(null);
           setLoading(false);
         }
@@ -99,6 +117,10 @@ export function ClientsView() {
   }, []);
 
   function openAddDialog() {
+    if (clientLimitReached) {
+      return;
+    }
+
     setEditingClient(null);
     setFormError(null);
     setDialogOpen(true);
@@ -177,10 +199,20 @@ export function ClientsView() {
             Manage your clients and their information
           </p>
         </div>
-        <Button className="w-full sm:w-auto" onClick={openAddDialog}>
-          <Plus data-icon="inline-start" />
-          Add Client
-        </Button>
+        {clientLimitReached ? (
+          <Button
+            className="w-full sm:w-auto"
+            nativeButton={false}
+            render={<Link href="/pricing" />}
+          >
+            Free plan limit reached — Upgrade
+          </Button>
+        ) : (
+          <Button className="w-full sm:w-auto" onClick={openAddDialog}>
+            <Plus data-icon="inline-start" />
+            Add Client
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

@@ -3,30 +3,12 @@
 import { createClient } from "@/lib/supabase/client";
 import {
   mapProjectRow,
+  PROJECT_SELECT,
+  toProjectPayload,
   type Project,
   type ProjectFormValues,
   type ProjectRow,
 } from "@/components/projects/data";
-
-const projectSelect = `
-  id,
-  user_id,
-  client_id,
-  name,
-  description,
-  status,
-  value,
-  progress,
-  start_date,
-  due_date,
-  created_at,
-  updated_at,
-  client:clients (
-    id,
-    full_name,
-    company
-  )
-`;
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
@@ -51,31 +33,11 @@ async function requireUserId() {
   return { supabase, userId: data.user.id };
 }
 
-function toProjectPayload(userId: string, values: ProjectFormValues) {
-  const value = Number(values.value);
-  const progress = Number(values.progress);
-
-  return {
-    user_id: userId,
-    client_id: values.clientId,
-    name: values.name.trim(),
-    description: values.description.trim(),
-    status: values.status,
-    value: Number.isFinite(value) ? value : 0,
-    progress: Math.min(
-      100,
-      Math.max(0, Number.isFinite(progress) ? Math.round(progress) : 0)
-    ),
-    start_date: values.startDate,
-    due_date: values.dueDate,
-  };
-}
-
 export async function fetchProjects(): Promise<Project[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("projects")
-    .select(projectSelect)
+    .select(PROJECT_SELECT)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -83,23 +45,6 @@ export async function fetchProjects(): Promise<Project[]> {
   }
 
   return (data as ProjectRow[]).map(mapProjectRow);
-}
-
-export async function createProjectRecord(
-  values: ProjectFormValues
-): Promise<Project> {
-  const { supabase, userId } = await requireUserId();
-  const { data, error } = await supabase
-    .from("projects")
-    .insert(toProjectPayload(userId, values))
-    .select(projectSelect)
-    .single();
-
-  if (error) {
-    throw new Error(getErrorMessage(error, "Unable to add project."));
-  }
-
-  return mapProjectRow(data as ProjectRow);
 }
 
 export async function updateProjectRecord(
@@ -111,7 +56,7 @@ export async function updateProjectRecord(
     .from("projects")
     .update(toProjectPayload(userId, values))
     .eq("id", id)
-    .select(projectSelect)
+    .select(PROJECT_SELECT)
     .single();
 
   if (error) {

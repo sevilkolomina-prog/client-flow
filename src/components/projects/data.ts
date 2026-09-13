@@ -70,6 +70,46 @@ export const projectStatusFilters = ["All", ...projectStatuses] as const;
 
 export type ProjectStatusFilter = (typeof projectStatusFilters)[number];
 
+export const PROJECT_SELECT = `
+  id,
+  user_id,
+  client_id,
+  name,
+  description,
+  status,
+  value,
+  progress,
+  start_date,
+  due_date,
+  created_at,
+  updated_at,
+  client:clients (
+    id,
+    full_name,
+    company
+  )
+`;
+
+export function toProjectPayload(userId: string, values: ProjectFormValues) {
+  const value = Number(values.value);
+  const progress = Number(values.progress);
+
+  return {
+    user_id: userId,
+    client_id: values.clientId,
+    name: values.name.trim(),
+    description: values.description.trim(),
+    status: values.status,
+    value: Number.isFinite(value) ? value : 0,
+    progress: Math.min(
+      100,
+      Math.max(0, Number.isFinite(progress) ? Math.round(progress) : 0)
+    ),
+    start_date: values.startDate,
+    due_date: values.dueDate,
+  };
+}
+
 export const projectClientNames = initialClients.map((client) => client.company);
 
 export const initialProjects: Project[] = [
