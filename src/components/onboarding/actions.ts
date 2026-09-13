@@ -52,7 +52,6 @@ export async function completeOnboarding(
   }
 
   const payload = {
-    id: data.user.id,
     full_name: fullName,
     company_name: companyName,
     phone,
@@ -60,12 +59,26 @@ export async function completeOnboarding(
     onboarding_complete: true,
   };
 
-  const { error } = await supabase.from("profiles").upsert(payload, {
-    onConflict: "id",
-  });
+  const { data: updated, error: updateError } = await supabase
+    .from("profiles")
+    .update(payload)
+    .eq("id", data.user.id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    return { error: error.message };
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  if (!updated) {
+    const { error: insertError } = await supabase.from("profiles").insert({
+      id: data.user.id,
+      ...payload,
+    });
+
+    if (insertError) {
+      return { error: insertError.message };
+    }
   }
 
   await supabase.auth.updateUser({
